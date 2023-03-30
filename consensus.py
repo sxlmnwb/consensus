@@ -1,4 +1,4 @@
-#  Github https://github.com/Northa
+#!/usr/bin/python3
 
 from urllib import request
 import math
@@ -7,11 +7,11 @@ from json import loads
 
 ERR_MSG = f"\033[91m[ERR] API endpoint unreachable: api\n" \
           f"[ERR] Be sure you have enabled your API " \
-          f"(you can enable this in your app.toml config file)\n" \
-          f"Bugreports Discord: Yep++#9963\033[0m"
+          f"(you can enable this in your app.toml config file)\n"
 
-# default ports
-REST = "http://127.0.0.1:1317"
+# custom endpoints
+
+API = "http://127.0.0.1:1317"
 RPC = "http://127.0.0.1:26657"
 
 def handle_request(api: str, pattern: str):
@@ -33,10 +33,10 @@ def get_validator_votes():
     chain = get_chain_id()
     for r_ound in votes:
         if float(r_ound['precommits_bit_array'].split('=')[-1].strip()) <= 0.66 and float(r_ound['precommits_bit_array'].split('=')[-1].strip()) > 0:
-            print(F"\nChain-id: {chain}\n"
-                  f"Height: {height} Round: {r_ound['round']} "
-                  f"step: {step}\n"
-                  f"precommits_bit_array: {r_ound['precommits_bit_array'].split('} ')[-1]}")
+            print(F"\nCHAIN ID : {chain}\n"
+                  f"HEIGHT : {height} Round: {r_ound['round']} "
+                  f"STEP : {step}\n"
+                  f"PRECOMMITS BIT ARRAY : {r_ound['precommits_bit_array'].split('} ')[-1]}")
 
             for precommit in r_ound['precommits']:
                 try:
@@ -45,7 +45,7 @@ def get_validator_votes():
                     validator_votes.append(precommit)
 
         elif float(r_ound['prevotes_bit_array'].split('=')[-1].strip()) <= 0.66 and float(r_ound['prevotes_bit_array'].split('=')[-1].strip()) > 0:
-            print(F"\nChain-id: {chain}\nHeight: {height} Round: {r_ound['round']} step: {step}\nprevotes_bit_array: {r_ound['prevotes_bit_array'].split('} ')[-1]}")
+            print(F"\nCHAIN ID : {chain}\nHEIGHT : {height} ROUND : {r_ound['round']} step : {step}\nPREVOTES BIT ARRAY : {r_ound['prevotes_bit_array'].split('} ')[-1]}")
 
             for precommit in r_ound['prevotes']:
                 try:
@@ -58,7 +58,7 @@ def get_validator_votes():
         height = STATE['result']['round_state']['height']
 
         if float(commit_votes['votes_bit_array'].split('=')[-1].strip()) > 0.66 and float(commit_votes['votes_bit_array'].split('=')[-1].strip()) > 0:
-            print(F"\nChain-id: {chain}\nHeight: {height} Round: {r_ound['round']} step: {step}\nvotes_bit_array: {commit_votes['votes_bit_array'].split('} ')[-1]}")
+            print(F"\nCHAIN ID : {chain}\nHEIGHT : {height} ROUND : {r_ound['round']} step : {step}\nPREVOTES BIT ARRAY : {r_ound['prevotes_bit_array'].split('} ')[-1]}")
         for commit_vote in commit_votes['votes']:
 
             try:
@@ -79,7 +79,7 @@ def get_validators():
 
 
 def get_bonded():
-    result = handle_request(REST, '/cosmos/staking/v1beta1/pool')['pool']
+    result = handle_request(API, '/cosmos/staking/v1beta1/pool')['pool']
     return result
 
 
@@ -92,7 +92,7 @@ def strip_emoji_non_ascii(moniker):
 def get_validators_rest():
     validator_dict = dict()
     bonded_tokens = int(get_bonded()["bonded_tokens"])
-    validators = handle_request(REST, '/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=2000')
+    validators = handle_request(API, '/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=2000')
     # print(type(validators))
     # for i in validators:print(i)
 
@@ -114,7 +114,6 @@ def get_validators_rest():
 
 
 def merge_info():
-    print('Bugreports discord: Yep++#9963')
     votes = get_validator_votes()
     validators = get_validators()
     votes_and_vals = list(zip(votes, validators))
@@ -149,7 +148,7 @@ def list_columns(obj, cols=3, columnwise=True, gap=8):
 
 
 def get_chain_id():
-    response = handle_request(REST, '/cosmos/base/tendermint/v1beta1/node_info')
+    response = handle_request(API, '/cosmos/base/tendermint/v1beta1/node_info')
     # for i in response:print()
     chain_id = response['default_node_info']['network'] if 'default_node_info' in response else response['node_info']['network']
     return chain_id
@@ -185,14 +184,14 @@ def calculate_colums(result):
 
 
 def get_pubkey_by_valcons(valcons, height):
-    response = handle_request(REST, f"/validatorsets/{height}")
+    response = handle_request(API, f"/validatorsets/{height}")
     for validator in response['result']['validators']:
         if valcons in validator['address']:
             return validator['pub_key']['value']
 
 
 def get_moniker_by_pub_key(pub_key, height):
-    response = handle_request(REST, f"cosmos/staking/v1beta1/historical_info/{height}")
+    response = handle_request(API, f"cosmos/staking/v1beta1/historical_info/{height}")
     for validator in response['hist']['valset']:
 
         if pub_key in validator['consensus_pubkey']['key']:
@@ -200,13 +199,13 @@ def get_moniker_by_pub_key(pub_key, height):
 
 
 def get_evidence(height):
-    evidences = handle_request(REST, '/cosmos/evidence/v1beta1/evidence')
+    evidences = handle_request(API, '/cosmos/evidence/v1beta1/evidence')
     for evidence in evidences['evidence']:
         if int(height) - int(evidence['height']) < 1000:
             pub_key = get_pubkey_by_valcons(evidence['consensus_address'], evidence['height']).strip()
             moniker = get_moniker_by_pub_key(pub_key, evidence['height'])
             # print(colored(f"Evidence: {moniker}\nHeight: {evidence['height']} {evidence['consensus_address']} power: {evidence['power']}\n", 'yellow'))
-            print(f"\033[93mEvidence: {moniker}\nHeight: {evidence['height']} {evidence['consensus_address']} power: {evidence['power']}\033[0m\n")
+            print(f"\033[93mEVIDENCE : {moniker}\nHEIGHT : {evidence['height']} {evidence['consensus_address']} POWER : {evidence['power']}\033[0m\n")
 
 
 def main(STATE):
@@ -217,7 +216,7 @@ def main(STATE):
         if val['voted'] != 'nil-Vote':
             online_vals += 1
 
-    print(f"Online: {online_vals}/{total_validators}\n")
+    print(f"ONLINE : {online_vals}/{total_validators}\n")
     # get_evidence(STATE['result']['round_state']['height'])
     result = colorize_output(validators)
     print(calculate_colums(result))
